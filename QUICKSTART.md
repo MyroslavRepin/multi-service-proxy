@@ -35,13 +35,15 @@ docker compose ps
 
 Должны работать:
 - `gateway-nginx` (nginx на порту 8080)
-- `reflectly` (reflectly на внутреннем порту 8080)
+- `reflectly-server` (reflectly backend на внутреннем порту 8080)
+- `reflectly-frontend` (Vue frontend на порту 5173)
+- `reflectly-db` (PostgreSQL database на внутреннем порту 5432)
 - `app_2` (demo app на внутреннем порту 8000)
 
 ## 🧪 Тестирование
 
 ```bash
-# Тест reflectly
+# Тест reflectly backend через nginx
 curl http://reflectly.myroslavrepin.com:8080/
 
 # Тест app2
@@ -49,8 +51,9 @@ curl http://app2.localhost:8080/
 ```
 
 В браузере:
-- http://reflectly.myroslavrepin.com:8080
-- http://app2.localhost:8080
+- **Reflectly Backend (через nginx)**: http://reflectly.myroslavrepin.com:8080
+- **Reflectly Frontend**: http://localhost:5173
+- **App2**: http://app2.localhost:8080
 
 ## 📊 Логи
 
@@ -58,11 +61,17 @@ curl http://app2.localhost:8080/
 # Все сервисы
 docker compose logs -f
 
-# Только reflectly
-docker compose logs -f reflectly
+# Только reflectly backend
+docker compose logs -f reflectly-server
+
+# Только reflectly frontend
+docker compose logs -f reflectly-frontend
 
 # Только nginx
 docker compose logs -f nginx
+
+# Только база данных
+docker compose logs -f reflectly-db
 ```
 
 ## 🔄 Перезапуск после изменений
@@ -72,8 +81,11 @@ docker compose logs -f nginx
 docker compose down
 docker compose up -d --build
 
-# Только reflectly
-docker compose up -d --build reflectly
+# Только reflectly backend
+docker compose up -d --build reflectly-server
+
+# Только reflectly frontend
+docker compose up -d reflectly-frontend
 ```
 
 ## 🛑 Остановка
@@ -101,10 +113,17 @@ multi-service-proxy/
 
 ## ⚙️ Важные настройки
 
-### Reflectly
+### Reflectly Backend
 - **Внутренний порт**: 8080
-- **Контейнер**: reflectly
+- **Контейнер**: reflectly-server
 - **Конфиг nginx**: `nginx/conf.d/reflectly.conf`
+- **База данных**: PostgreSQL (reflectly-db:5432)
+
+### Reflectly Frontend
+- **Порт**: 5173
+- **Контейнер**: reflectly-frontend
+- **Framework**: Vue 3 + Vite
+- **API URL**: http://localhost:8080
 
 ### Nginx
 - **Внешний порт**: 8080 (host:8080 → container:80)
@@ -125,9 +144,9 @@ docker compose up -d
 
 ### 502 Bad Gateway
 ```bash
-# Проверьте, запущен ли reflectly
-docker compose ps reflectly
-docker compose logs reflectly
+# Проверьте, запущен ли reflectly-server
+docker compose ps reflectly-server
+docker compose logs reflectly-server
 ```
 
 ### Cannot connect
@@ -141,7 +160,18 @@ lsof -i :8080
 
 ### Reflectly не стартует
 ```bash
-# Проверьте docker-compose.yml в reflectly/
-cd reflectly
-docker compose config
+# Проверьте логи всех сервисов reflectly
+docker compose logs reflectly-server
+docker compose logs reflectly-frontend
+docker compose logs reflectly-db
+```
+
+### База данных не подключается
+```bash
+# Проверьте статус БД
+docker compose ps reflectly-db
+docker compose logs reflectly-db
+
+# Подключитесь к БД напрямую
+docker exec -it reflectly-db psql -U root -d reflectly
 ```

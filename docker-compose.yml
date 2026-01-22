@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   nginx:
     image: nginx:alpine
@@ -8,21 +10,66 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
-      - reflectly
+      - reflectly-server
       - app_2
     networks:
       - backend
 
-  reflectly:
-    extends:
-      file: ./reflectly/docker-compose.yml
-      service: reflectly
-    container_name: reflectly
+  # Reflectly Frontend
+  reflectly-frontend:
+    image: node:20-alpine
+    container_name: reflectly-frontend
+    working_dir: /app
+    ports:
+      - "5173:5173"
     expose:
-      - "8080"
+      - "5173"
+    volumes:
+      - ./reflectly/frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    depends_on:
+      - reflectly-server
     networks:
       - backend
 
+  # Reflectly Server (Main backend)
+  reflectly-server:
+    build: ./reflectly
+    container_name: reflectly-server
+    image: reflectly:latest
+    expose:
+      - "8080"
+    logging:
+      driver: json-file
+      options:
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
+    depends_on:
+      - reflectly-db
+    environment:
+      DATABASE_URL: postgresql+asyncpg://root:secretKey@reflectly-db:5432/reflectly
+    networks:
+      - backend
+
+  # Reflectly Database
+  reflectly-db:
+    image: postgres:16
+    container_name: reflectly-db
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: secretKey
+      POSTGRES_DB: reflectly
+    expose:
+      - "5432"
+    volumes:
+      - reflectly-pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  # App 2 (Demo service)
   app_2:
     build: ./app_2
     container_name: app_2
@@ -34,3 +81,7 @@ services:
 networks:
   backend:
     driver: bridge
+
+volumes:
+  reflectly-pgdata:
+
