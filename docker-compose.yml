@@ -8,16 +8,18 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
-      - app_1
+      - reflectly
       - app_2
     networks:
       - backend
 
-  app_1:
-    build: ./app_1
-    container_name: app_1
+  reflectly:
+    extends:
+      file: ./reflectly/docker-compose.yml
+      service: reflectly
+    container_name: reflectly
     expose:
-      - "8000"
+      - "8080"
     networks:
       - backend
 

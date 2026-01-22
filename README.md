@@ -7,7 +7,7 @@ A Docker-based reverse proxy setup using Nginx to route traffic to multiple back
 ```
 Client Browser
       │
-      │ http://app1.localhost:8080
+      │ http://reflectly.myroslavrepin.com:8080
       │ http://app2.localhost:8080
       │
       ▼
@@ -19,21 +19,21 @@ Client Browser
 │  (gateway-nginx)        │
 │                         │
 │  Routes by server_name: │
-│  • app1.localhost       │
+│  • reflectly.myroslavrepin.com │
 │  • app2.localhost       │
 └──────┬──────────┬───────┘
        │          │
        │          │
-   ┌───▼───┐  ┌──▼────┐
-   │ app_1 │  │ app_2 │
-   │ :8000 │  │ :8000 │
-   └───────┘  └───────┘
+   ┌───▼──────┐  ┌──▼────┐
+   │ reflectly│  │ app_2 │
+   │  :8080   │  │ :8000 │
+   └──────────┘  └───────┘
 ```
 
 **Request Flow:**
-1. Client → `http://app1.localhost:8080`
+1. Client → `http://reflectly.myroslavrepin.com:8080`
 2. Nginx checks `Host` header
-3. Routes to `app_1:8000` or `app_2:8000`
+3. Routes to `reflectly:8080` or `app_2:8000`
 4. Response sent back through Nginx
 
 ## Prerequisites
@@ -44,7 +44,7 @@ Client Browser
 
 Add to your `/etc/hosts` file:
 ```
-127.0.0.1 app1.localhost
+127.0.0.1 reflectly.myroslavrepin.com
 127.0.0.1 app2.localhost
 ```
 
@@ -55,11 +55,11 @@ Add to your `/etc/hosts` file:
   - Container: `gateway-nginx`
   - Port mapping: `8080:80` (host:container)
 
-- **app_1**: Demo HTTP service
-  - Image: `hashicorp/http-echo:0.2.3`
-  - Container: `app_1`
-  - Internal port: 8000
-  - Response: "Hello from APP 1"
+- **reflectly**: Main application service
+  - Managed via external docker-compose.yml in `reflectly/` directory
+  - Container: `reflectly`
+  - Internal port: 8080
+  - Domain: reflectly.myroslavrepin.com
 
 - **app_2**: Demo HTTP service
   - Image: `hashicorp/http-echo:0.2.3`
@@ -86,25 +86,25 @@ docker compose logs -f
 
 # Specific service
 docker compose logs -f nginx
-docker compose logs -f app_1
+docker compose logs -f reflectly
 ```
 
 ### Test Endpoints
 
 Using curl:
 ```bash
-# Test app1
-curl http://app1.localhost:8080/
+# Test reflectly
+curl http://reflectly.myroslavrepin.com:8080/
 
 # Test app2
 curl http://app2.localhost:8080/
 
 # Test with explicit Host header
-curl -H "Host: app1.localhost" http://localhost:8080/
+curl -H "Host: reflectly.myroslavrepin.com" http://localhost:8080/
 ```
 
 Using browser:
-- http://app1.localhost:8080
+- http://reflectly.myroslavrepin.com:8080
 - http://app2.localhost:8080
 
 ### Stop Services
@@ -121,16 +121,17 @@ docker compose up -d --build
 ## Project Structure
 ```
 multi-service-proxy/
-├── docker-compose.yml          # Service orchestration
+├── docker-compose.yml          # Main service orchestration
 ├── README.md                   # This file
-├── app_1/
-│   └── Dockerfile             # App 1 container definition
+├── reflectly/
+│   ├── docker-compose.yml     # Reflectly service definition
+│   └── ...                    # Other reflectly files
 ├── app_2/
 │   └── Dockerfile             # App 2 container definition
 └── nginx/
     ├── nginx.conf             # Main nginx configuration
     └── conf.d/
-        ├── app1.conf          # App 1 virtual host config
+        ├── reflectly.conf     # Reflectly virtual host config
         └── app2.conf          # App 2 virtual host config
 ```
 
@@ -179,7 +180,7 @@ docker compose up -d --build
 
 ## Troubleshooting
 
-### Cannot connect to app1.localhost:8080
+### Cannot connect to reflectly.myroslavrepin.com:8080
 
 1. Check containers are running:
 ```bash
@@ -193,12 +194,12 @@ docker compose logs nginx
 
 3. Verify hosts file:
 ```bash
-cat /etc/hosts | grep localhost
+cat /etc/hosts | grep reflectly
 ```
 
 4. Test with curl:
 ```bash
-curl -v http://app1.localhost:8080/
+curl -v http://reflectly.myroslavrepin.com:8080/
 ```
 
 ### Connection refused
@@ -214,7 +215,7 @@ lsof -i :8080
 - Backend service is not running
 - Check backend service logs:
 ```bash
-docker compose logs app_1
+docker compose logs reflectly
 ```
 
 ## Production Deployment
@@ -232,7 +233,7 @@ Example with SSL:
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name app1.example.com;
+    server_name reflectly.myroslavrepin.com;
 
     ssl_certificate /etc/nginx/ssl/cert.pem;
     ssl_certificate_key /etc/nginx/ssl/key.pem;

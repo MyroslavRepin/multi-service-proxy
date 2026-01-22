@@ -1,0 +1,12 @@
+services:
+  reflectly:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+    # Add your reflectly-specific environment variables here
+    # volumes:
+    #   - ./data:/app/data
+    # env_file:
+    #   - .env
